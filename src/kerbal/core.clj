@@ -17,7 +17,7 @@
   (apply println args)
   (.message (UI/newInstance @*connection*)
             (str/join " " args)
-            15
+            30
             krpc.client.services.UI$MessagePosition/TOP_LEFT
             (org.javatuples.Triplet. 1.0 1.0 1.0)
             (float 10.0)))
