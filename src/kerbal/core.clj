@@ -95,6 +95,16 @@
                                      clamps)]
     (seq clamps-in-next-stage)))
 
+(defn next-stage-has-fairing? [vessel stage]
+  (let [fairings (.getFairings (.getParts vessel))
+        fairings-in-next-stage (filter (fn [fairing]
+                                         (= (.getStage (.getPart fairing)) stage))
+                                       fairings)]
+    (seq fairings-in-next-stage)))
+
+(defn get-surface-altitude [vessel]
+  (.getMeanAltitude (get-flight vessel (.getSurfaceReferenceFrame vessel))))
+
 (defn check-staging! [vessel]
   (let [stage (dec (.getCurrentStage (get-control vessel)))
         active-engines (get-active-engines vessel)
@@ -113,6 +123,10 @@
       (next-stage! vessel))
     (when (next-stage-has-release-clamps? vessel stage)
       (log! :release-clamps)
+      (next-stage! vessel))
+    (when (and (next-stage-has-fairing? vessel stage)
+               (> (get-surface-altitude vessel) 70000))
+      (log! :deploy-fairing)
       (next-stage! vessel))))
 
 (defmacro while-waiting [condition & body]
