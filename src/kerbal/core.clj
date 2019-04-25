@@ -181,13 +181,13 @@
     (doto auto-pilot
       (.setTargetRoll 180)
       (.targetPitchAndHeading 0 90))
-    (log! :altitude (.get altitude) :prepare-to :circularize)
+    (log! :altitude (int (.get altitude)) :prepare-to :circularize)
 
 
     (while-waiting (<= (.get altitude) (* 0.9 (.get apoapsis)))
       (check-staging! vessel))
     (.setThrottle control 100)
-    (log! :altitude (.get altitude) :circularize)
+    (log! :altitude (int (.get altitude)) :circularize)
 
     (while-waiting (<= (.get periapsis) (* 0.90 orbit-height))
       (check-staging! vessel))
