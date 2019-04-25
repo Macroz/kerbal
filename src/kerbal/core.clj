@@ -177,19 +177,9 @@
       (check-staging! vessel))
     (log! :liftoff)))
 
-(defn fly-to-orbit! [vessel orbit-height]
-  (let [frame (.getSurfaceReferenceFrame vessel)
-        flight (get-flight vessel frame)
-        ut (add-stream! SpaceCenter "getUT")
-        altitude (add-stream! flight "getMeanAltitude")
-        orbit (.getOrbit vessel)
-        apoapsis (add-stream! orbit "getApoapsisAltitude")
-        periapsis (add-stream! orbit "getPeriapsisAltitude")
-        time-to-apoapsis (add-stream! orbit "getTimeToApoapsis")
-        time-to-periapsis (add-stream! orbit "getTimeToPeriapsis")
-        auto-pilot (get-auto-pilot vessel)
-        control (get-control vessel)]
-
+(defn execute-gravity-turn!
+  [vessel {:keys [altitude]}]
+  (let [auto-pilot (get-auto-pilot vessel)]
     (while-waiting (<= (.get altitude) 1000)
       (check-staging! vessel))
     (doto auto-pilot
@@ -207,14 +197,18 @@
       (check-staging! vessel))
     (doto auto-pilot
       (.targetPitchAndHeading 45 90))
-    (log! :gravity-turn)
+    (log! :gravity-turn)))
 
-    (while-waiting (<= (.get apoapsis) (* 0.9 orbit-height))
-      (check-staging! vessel))
-    (.setThrottle control 0)
-    (log! :minimum :apoapsis (int (* 0.9 orbit-height)):reached)
-    (log! :coasting)
+(defn execute-coasting!
+  [vessel target-orbit {:keys [apoapsis]}]
+  (while-waiting (<= (.get apoapsis) (* 0.9 target-orbit))
+    (check-staging! vessel))
+  (log! :minimum :apoapsis (int (* 0.9 target-orbit)) :reached)
+  (log! :coasting))
 
+(defn execute-circularize!
+  [vessel target-orbit {:keys [altitude apoapsis]}]
+  (let [auto-pilot (get-auto-pilot vessel)]
     (while-waiting (<= (.get altitude) 70000)
       (check-staging! vessel))
     (doto auto-pilot
@@ -224,9 +218,13 @@
 
     (while-waiting (<= (.get altitude) (* 0.95 (.get apoapsis)))
       (check-staging! vessel))
-    (log! :altitude (int (.get altitude)) :circularize)
+    (log! :altitude (int (.get altitude)) :circularize)))
 
-    (while-waiting (<= (.get periapsis) (* 0.95 orbit-height))
+(defn execute-finalize-circularization!
+  [vessel target-orbit {:keys [altitude apoapsis periapsis time-to-apoapsis time-to-periapsis]}]
+  (let [auto-pilot (get-auto-pilot vessel)
+        control (get-control vessel)]
+    (while-waiting (<= (.get periapsis) (* 0.95 target-orbit))
       (check-staging! vessel)
       (cond (< (.get time-to-apoapsis) 30)
             (.setThrottle control 100)
@@ -239,6 +237,30 @@
             (.setThrottle control 0)))
     (.setThrottle control 0)
     (log! :orbit)))
+
+(defn fly-to-orbit! [vessel target-orbit]
+  (let [frame (.getSurfaceReferenceFrame vessel)
+        flight (get-flight vessel frame)
+        orbit (.getOrbit vessel)
+        auto-pilot (get-auto-pilot vessel)
+        control (get-control vessel)
+        ut (add-stream! SpaceCenter "getUT")
+        altitude (add-stream! flight "getMeanAltitude")
+        apoapsis (add-stream! orbit "getApoapsisAltitude")
+        periapsis (add-stream! orbit "getPeriapsisAltitude")
+        time-to-apoapsis (add-stream! orbit "getTimeToApoapsis")
+        time-to-periapsis (add-stream! orbit "getTimeToPeriapsis")
+        streams {:ut ut
+                 :altitude altitude
+                 :apoapsis apoapsis
+                 :periapsis periapsis
+                 :time-to-apoapsis time-to-apoapsis
+                 :time-to-periapsis time-to-periapsis}]
+
+    (execute-gravity-turn! vessel streams)
+    (execute-coasting! vessel target-orbit streams)
+    (execute-circularize! vessel target-orbit streams)
+    (execute-finalize-circularization! vessel target-orbit streams)))
 
 (defonce flight (atom nil))
 
