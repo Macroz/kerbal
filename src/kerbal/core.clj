@@ -118,25 +118,26 @@
         active-engines (get-active-engines vessel)
         solid-rocket-engines (filter solid-rocket-engine? active-engines)
         liquid-engines (remove solid-rocket-engine? active-engines)]
-    (when (empty? active-engines)
-      (log! :no-engines-stage)
-      (next-stage! vessel))
-    (when (and (seq solid-rocket-engines)
-               (not-every? engine-has-fuel? solid-rocket-engines))
-      (log! :solid-rocket-out-of-fuel)
-      (next-stage! vessel))
-    (when (and (seq liquid-engines)
-               (not-every? engine-has-fuel? liquid-engines))
-      (log! :liquid-engine-out-of-fuel)
-      (next-stage! vessel))
-    (when (next-stage-has-release-clamps? vessel stage)
-      (log! :release-clamps)
-      (next-stage! vessel))
-    (when (and (next-stage-has-fairing? vessel stage)
-               (or (> (get-surface-altitude vessel) 70000)
-                   (almost-out-of-electric-charge? vessel)))
-      (log! :deploy-fairing)
-      (next-stage! vessel))))
+    (when-not (last-stage? vessel stage)
+      (when (empty? active-engines)
+        (log! "Staging" "– No engines in stage")
+        (next-stage! vessel))
+      (when (and (seq solid-rocket-engines)
+                 (not-every? engine-has-fuel? solid-rocket-engines))
+        (log! "Staging" "– Solid rocket out of fuel")
+        (next-stage! vessel))
+      (when (and (seq liquid-engines)
+                 (not-every? engine-has-fuel? liquid-engines))
+        (log! "Staging" "– Liquid engine out of fuel")
+        (next-stage! vessel))
+      (when (next-stage-has-release-clamps? vessel stage)
+        (log! "Staging" "– Release clamps")
+        (next-stage! vessel))
+      (when (and (next-stage-has-fairing? vessel stage)
+                 (or (> (get-surface-altitude vessel) 70000)
+                     (almost-out-of-electric-charge? vessel)))
+        (log! "Staging" "– Deploy fairing")
+        (next-stage! vessel)))))
 
 (defmacro while-waiting [condition & body]
   `(while ~condition
@@ -162,53 +163,62 @@
 
     (log! "T-2")
     (doto control
-      (.setSAS false)
+      (.setSAS true)
       (.setRCS false)
       (.setThrottle 100))
     (Thread/sleep 1000)
 
     (log! "T-1")
-    (doto auto-pilot
-      (.engage)
-      (.targetPitchAndHeading 90 90))
     (Thread/sleep 1000)
 
     (log! "T-0")
     (next-stage! vessel)
-    (log! :engine-start)
+    (log! "Ignition")
 
     (while-waiting (< (.get altitude) (+ initial-altitude 1))
       (check-staging! vessel))
-    (log! :liftoff)))
+    (log! "Lift-off")))
 
 (defn execute-gravity-turn!
   [vessel {:keys [altitude]}]
-  (let [auto-pilot (get-auto-pilot vessel)]
+  (let [auto-pilot (get-auto-pilot vessel)
+        control (get-control vessel)]
+    (while-waiting (<= (.get altitude) 250)
+      (check-staging! vessel))
+    (doto control
+      (.setSAS false))
+    (doto auto-pilot
+      (.targetPitchAndHeading 90 90)
+      (.engage))
+    (log! "Autopilot engaged")
+
     (while-waiting (<= (.get altitude) 1000)
       (check-staging! vessel))
     (doto auto-pilot
       (.setTargetRoll 180)
       (.targetPitchAndHeading 85 90))
-    (log! :gravity-turn)
+    (log! "Gravity turn")
 
     (while-waiting (<= (.get altitude) 5000)
       (check-staging! vessel))
     (doto auto-pilot
       (.targetPitchAndHeading 75 90))
-    (log! :gravity-turn)
+    (log! "Gravity turn")
 
     (while-waiting (<= (.get altitude) 10000)
       (check-staging! vessel))
     (doto auto-pilot
       (.targetPitchAndHeading 45 90))
-    (log! :gravity-turn)))
+    (log! "Gravity turn")))
 
 (defn execute-coasting!
   [vessel target-orbit {:keys [apoapsis]}]
-  (while-waiting (<= (.get apoapsis) (* 0.9 target-orbit))
-    (check-staging! vessel))
-  (log! :minimum :apoapsis (int (* 0.9 target-orbit)) :reached)
-  (log! :coasting))
+  (let [control (get-control vessel)]
+    (while-waiting (<= (.get apoapsis) (* 0.9 target-orbit))
+      (check-staging! vessel))
+    (log! "Minimum apoapsis reached" (int (* 0.9 target-orbit)))
+    (log! "Coasting")
+    (.setThrottle control 0)))
 
 (defn execute-circularize!
   [vessel target-orbit {:keys [altitude apoapsis]}]
@@ -218,11 +228,11 @@
     (doto auto-pilot
       (.setTargetRoll 180)
       (.targetPitchAndHeading 0 90))
-    (log! :altitude (int (.get altitude)) :prepare-to :circularize)
+    (log! "Preparing to circularize, altitude" (int (.get altitude)))
 
     (while-waiting (<= (.get altitude) (* 0.95 (.get apoapsis)))
       (check-staging! vessel))
-    (log! :altitude (int (.get altitude)) :circularize)))
+    (log! "Circularizing, altitude" (int (.get altitude)))))
 
 (defn execute-finalize-circularization!
   [vessel target-orbit {:keys [altitude apoapsis periapsis time-to-apoapsis time-to-periapsis]}]
@@ -233,14 +243,17 @@
       (cond (< (.get time-to-apoapsis) 30)
             (.setThrottle control 100)
 
+            (< (.get time-to-apoapsis) 60)
+            (.setThrottle control 50)
+
             ;; after apoapsis node
             (< (.get time-to-periapsis) (.get time-to-apoapsis))
-            (.setThrottle control 0)
+            (.setThrottle control 100)
 
-            (> (.get time-to-apoapsis) 60)
+            (> (.get time-to-apoapsis) 120)
             (.setThrottle control 0)))
     (.setThrottle control 0)
-    (log! :orbit)))
+    (log! "Reached orbit!")))
 
 (defn fly-to-orbit! [vessel target-orbit]
   (let [frame (.getSurfaceReferenceFrame vessel)
@@ -271,7 +284,8 @@
 (defn go! []
   (reset! flight
           (future
-            (connect! "192.168.88.146" 50000 50001)
+            ;;(connect! "192.168.88.146" 50000 50001)
+            (connect! "127.0.0.1" 50000 50001)
             (prn :version (krpc-version))
             (doto (get-vessel)
               (launch-sequence!)
