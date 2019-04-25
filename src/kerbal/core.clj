@@ -20,7 +20,7 @@
             30
             krpc.client.services.UI$MessagePosition/TOP_LEFT
             (org.javatuples.Triplet. 1.0 1.0 1.0)
-            (float 10.0)))
+            (float 16.0)))
 
 (defn connect!
   ([host rpc-port stream-port]
@@ -108,6 +108,10 @@
 
 (defn get-surface-altitude [vessel]
   (.getMeanAltitude (get-flight vessel (.getSurfaceReferenceFrame vessel))))
+
+
+(defn last-stage? [vessel stage]
+  (= stage 0))
 
 (defn check-staging! [vessel]
   (let [stage (dec (.getCurrentStage (get-control vessel)))
