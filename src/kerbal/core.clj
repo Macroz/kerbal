@@ -173,7 +173,7 @@
     (next-stage! vessel)
     (log! :engine-start)
 
-    (while-waiting (< initial-altitude (.get altitude))
+    (while-waiting (< (.get altitude) (+ initial-altitude 1))
       (check-staging! vessel))
     (log! :liftoff)))
 
