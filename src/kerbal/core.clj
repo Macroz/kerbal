@@ -228,14 +228,14 @@
 
     (while-waiting (<= (.get periapsis) (* 0.95 orbit-height))
       (check-staging! vessel)
-      (cond (< (.get time-to-apoapsis) 20)
+      (cond (< (.get time-to-apoapsis) 30)
             (.setThrottle control 100)
 
             ;; after apoapsis node
             (< (.get time-to-periapsis) (.get time-to-apoapsis))
-            (.setThrottle control 100)
+            (.setThrottle control 0)
 
-            (> (.get time-to-apoapsis) 40)
+            (> (.get time-to-apoapsis) 60)
             (.setThrottle control 0)))
     (.setThrottle control 0)
     (log! :orbit)))
