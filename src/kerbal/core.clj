@@ -85,11 +85,15 @@
   (.getThrottleLocked engine))
 
 (defn check-staging! [vessel]
-  (let [stage (dec (.getCurrentStage (get-control vessel)))]
-    (when (not-every? engine-has-fuel? (filter solid-rocket-engine? (get-active-engines vessel)))
+  (let [stage (dec (.getCurrentStage (get-control vessel)))
+        solid-rocket-engines (filter solid-rocket-engine? (get-active-engines vessel))
+        liquid-engines (remove solid-rocket-engine? (get-active-engines vessel))]
+    (when (and (seq solid-rocket-engines)
+               (not-every? engine-has-fuel? solid-rocket-engines))
       (log! :solid-rocket-out-of-fuel)
       (next-stage! vessel))
-    (when (not-any? engine-has-fuel? (remove solid-rocket-engine? (get-active-engines vessel)))
+    (when (and (seq liquid-engines)
+               (not-any? engine-has-fuel? liquid-engines))
       (log! :liquid-engine-out-of-fuel)
       (next-stage! vessel))))
 
