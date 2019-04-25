@@ -102,6 +102,10 @@
                                        fairings)]
     (seq fairings-in-next-stage)))
 
+(defn almost-out-of-electric-charge? [vessel]
+  (< (.amount (.getResources (get-vessel)) "ElectricCharge")
+     (* 0.1 (.max (.getResources (get-vessel)) "ElectricCharge"))))
+
 (defn get-surface-altitude [vessel]
   (.getMeanAltitude (get-flight vessel (.getSurfaceReferenceFrame vessel))))
 
@@ -125,7 +129,8 @@
       (log! :release-clamps)
       (next-stage! vessel))
     (when (and (next-stage-has-fairing? vessel stage)
-               (> (get-surface-altitude vessel) 70000))
+               (or (> (get-surface-altitude vessel) 70000)
+                   (almost-out-of-electric-charge? vessel)))
       (log! :deploy-fairing)
       (next-stage! vessel))))
 
