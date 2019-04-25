@@ -144,7 +144,8 @@
         flight (get-flight vessel frame)
         altitude (add-stream! flight "getMeanAltitude")
         auto-pilot (get-auto-pilot vessel)
-        control (get-control vessel)]
+        control (get-control vessel)
+        initial-altitude (.get altitude)]
 
     (log! "T-5")
     (Thread/sleep 1000)
@@ -172,7 +173,8 @@
     (next-stage! vessel)
     (log! :engine-start)
 
-    (while-waiting (<= (.get altitude) 10))
+    (while-waiting (< initial-altitude (.get altitude))
+      (check-staging! vessel))
     (log! :liftoff)))
 
 (defn fly-to-orbit! [vessel orbit-height]
