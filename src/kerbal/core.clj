@@ -186,6 +186,7 @@
         apoapsis (add-stream! orbit "getApoapsisAltitude")
         periapsis (add-stream! orbit "getPeriapsisAltitude")
         time-to-apoapsis (add-stream! orbit "getTimeToApoapsis")
+        time-to-periapsis (add-stream! orbit "getTimeToPeriapsis")
         auto-pilot (get-auto-pilot vessel)
         control (get-control vessel)]
 
@@ -228,6 +229,10 @@
     (while-waiting (<= (.get periapsis) (* 0.95 orbit-height))
       (check-staging! vessel)
       (cond (< (.get time-to-apoapsis) 20)
+            (.setThrottle control 100)
+
+            ;; after apoapsis node
+            (< (.get time-to-periapsis) (.get time-to-apoapsis))
             (.setThrottle control 100)
 
             (> (.get time-to-apoapsis) 40)
