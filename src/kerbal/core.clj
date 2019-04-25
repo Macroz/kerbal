@@ -183,7 +183,6 @@
       (.targetPitchAndHeading 0 90))
     (log! :altitude (int (.get altitude)) :prepare-to :circularize)
 
-
     (while-waiting (<= (.get altitude) (* 0.9 (.get apoapsis)))
       (check-staging! vessel))
     (.setThrottle control 100)
