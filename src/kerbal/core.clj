@@ -86,8 +86,12 @@
 
 (defn check-staging! [vessel]
   (let [stage (dec (.getCurrentStage (get-control vessel)))
-        solid-rocket-engines (filter solid-rocket-engine? (get-active-engines vessel))
-        liquid-engines (remove solid-rocket-engine? (get-active-engines vessel))]
+        active-engines (get-active-engines vessel)
+        solid-rocket-engines (filter solid-rocket-engine? active-engines)
+        liquid-engines (remove solid-rocket-engine? active-engines)]
+    (when (empty? active-engines)
+      (log! :no-engines-staget)
+      (next-stage! vessel))
     (when (and (seq solid-rocket-engines)
                (not-every? engine-has-fuel? solid-rocket-engines))
       (log! :solid-rocket-out-of-fuel)
