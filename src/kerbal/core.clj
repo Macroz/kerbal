@@ -78,11 +78,22 @@
         active-engines (filter (fn [engine] (.getActive engine)) engines)]
     (doall active-engines)))
 
+(comment
+  (connect! "192.168.88.146" 50000 50001)
+  (get-active-engines (get-vessel)))
+
 (defn engine-has-fuel? [engine]
   (.getHasFuel engine))
 
 (defn solid-rocket-engine? [engine]
   (.getThrottleLocked engine))
+
+(defn next-stage-has-release-clamps? [vessel stage]
+  (let [clamps (.getLaunchClamps (.getParts vessel))
+        clamps-in-next-stage (filter (fn [clamp]
+                                       (= (.getStage (.getPart clamp)) stage))
+                                     clamps)]
+    (seq clamps-in-next-stage)))
 
 (defn check-staging! [vessel]
   (let [stage (dec (.getCurrentStage (get-control vessel)))
@@ -99,6 +110,9 @@
     (when (and (seq liquid-engines)
                (not-every? engine-has-fuel? liquid-engines))
       (log! :liquid-engine-out-of-fuel)
+      (next-stage! vessel))
+    (when (next-stage-has-release-clamps? vessel stage)
+      (log! :release-clamps)
       (next-stage! vessel))))
 
 (defmacro while-waiting [condition & body]
