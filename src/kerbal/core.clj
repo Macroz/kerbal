@@ -97,7 +97,7 @@
       (log! :solid-rocket-out-of-fuel)
       (next-stage! vessel))
     (when (and (seq liquid-engines)
-               (not-any? engine-has-fuel? liquid-engines))
+               (not-every? engine-has-fuel? liquid-engines))
       (log! :liquid-engine-out-of-fuel)
       (next-stage! vessel))))
 
