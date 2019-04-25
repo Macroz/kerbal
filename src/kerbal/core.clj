@@ -90,7 +90,7 @@
         solid-rocket-engines (filter solid-rocket-engine? active-engines)
         liquid-engines (remove solid-rocket-engine? active-engines)]
     (when (empty? active-engines)
-      (log! :no-engines-staget)
+      (log! :no-engines-stage)
       (next-stage! vessel))
     (when (and (seq solid-rocket-engines)
                (not-every? engine-has-fuel? solid-rocket-engines))
