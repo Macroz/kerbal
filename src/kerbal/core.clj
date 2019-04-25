@@ -175,8 +175,10 @@
         flight (get-flight vessel frame)
         ut (add-stream! SpaceCenter "getUT")
         altitude (add-stream! flight "getMeanAltitude")
-        apoapsis (add-stream! (.getOrbit vessel) "getApoapsisAltitude")
-        periapsis (add-stream! (.getOrbit vessel) "getPeriapsisAltitude")
+        orbit (.getOrbit vessel)
+        apoapsis (add-stream! orbit "getApoapsisAltitude")
+        periapsis (add-stream! orbit "getPeriapsisAltitude")
+        time-to-apoapsis (add-stream! orbit "getTimeToApoapsis")
         auto-pilot (get-auto-pilot vessel)
         control (get-control vessel)]
 
@@ -199,10 +201,11 @@
       (.targetPitchAndHeading 45 90))
     (log! :gravity-turn)
 
-    (while-waiting (<= (.get apoapsis) orbit-height)
+    (while-waiting (<= (.get apoapsis) (* 0.9 orbit-height))
       (check-staging! vessel))
     (.setThrottle control 0)
-    (log! :apoapsis orbit-height :coasting)
+    (log! :minimum :apoapsis (int (* 0.9 orbit-height)):reached)
+    (log! :coasting)
 
     (while-waiting (<= (.get altitude) 70000)
       (check-staging! vessel))
@@ -211,13 +214,17 @@
       (.targetPitchAndHeading 0 90))
     (log! :altitude (int (.get altitude)) :prepare-to :circularize)
 
-    (while-waiting (<= (.get altitude) (* 0.9 (.get apoapsis)))
+    (while-waiting (<= (.get altitude) (* 0.95 (.get apoapsis)))
       (check-staging! vessel))
-    (.setThrottle control 100)
     (log! :altitude (int (.get altitude)) :circularize)
 
-    (while-waiting (<= (.get periapsis) (* 0.90 orbit-height))
-      (check-staging! vessel))
+    (while-waiting (<= (.get periapsis) (* 0.95 orbit-height))
+      (check-staging! vessel)
+      (cond (< (.get time-to-apoapsis) 20)
+            (.setThrottle control 100)
+
+            (> (.get time-to-apoapsis) 40)
+            (.setThrottle control 0)))
     (.setThrottle control 0)
     (log! :orbit)))
 
