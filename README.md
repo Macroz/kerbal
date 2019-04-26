@@ -18,7 +18,7 @@ mvn install:install-file -Dfile=krpc-java-0.4.8.jar -DgroupId=krpc \
                  [org.javatuples/javatuples "1.2"]
                  [krpc/krpc-java "0.4.8"]]
 ```
-- download KRPC server zip from 
+- download KRPC server zip from the same place you downloaded the KRPC jar from
 - extract its `GameData` contents to the `GameData` folder
 - start KSP with the KRPC mod installed
 - once you launch a game, the server can be started (for more info read KRPC)
