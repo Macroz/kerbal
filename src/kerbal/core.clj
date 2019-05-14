@@ -38,6 +38,14 @@
 (defn get-space-center []
   (SpaceCenter/newInstance @*connection*))
 
+(defn load-game! [name]
+  (let [space-center (get-space-center)]
+    (.load space-center name)))
+
+(defn save-game! [name]
+  (let [space-center (get-space-center)]
+    (.save space-center name)))
+
 (defn get-vessel []
   (let [space-center (get-space-center)]
     (.getActiveVessel space-center)))
