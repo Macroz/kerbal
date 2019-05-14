@@ -60,7 +60,6 @@
 (defn get-stage-resources [vessel stage]
   (.resourcesInDecoupleStage vessel stage false))
 
-
 (defn stage-has-run-out-of-resource? [vessel stage resource-name]
   (let [resources (get-stage-resources vessel stage)]
     (and (> (.max resources resource-name) 0)
@@ -132,9 +131,11 @@
         (next-stage! vessel))
       (when (next-stage-has-release-clamps? vessel stage)
         (log! "Staging" "– Release clamps")
+        ;; Hack for Apollo 11
+        (Thread/sleep 8000)
         (next-stage! vessel))
       (when (and (next-stage-has-fairing? vessel stage)
-                 (or (> (get-surface-altitude vessel) 70000)
+                 (or (> (get-surface-altitude vessel) 100000)
                      (almost-out-of-electric-charge? vessel)))
         (log! "Staging" "– Deploy fairing")
         (next-stage! vessel)))))
@@ -159,6 +160,8 @@
     (Thread/sleep 1000)
 
     (log! "T-3")
+    (doto auto-pilot
+      (.disengage))
     (Thread/sleep 1000)
 
     (log! "T-2")
@@ -179,16 +182,20 @@
       (check-staging! vessel))
     (log! "Lift-off")))
 
+(comment
+  (check-staging! (get-vessel)))
+
 (defn execute-gravity-turn!
-  [vessel {:keys [altitude]}]
+  [vessel {:keys [altitude heading]}]
   (let [auto-pilot (get-auto-pilot vessel)
         control (get-control vessel)]
-    (while-waiting (<= (.get altitude) 250)
+    (while-waiting (<= (.get altitude) 150)
       (check-staging! vessel))
+    (log! "Tower cleared")
     (doto control
       (.setSAS false))
     (doto auto-pilot
-      (.targetPitchAndHeading 90 90)
+      (.targetPitchAndHeading 90 heading)
       (.engage))
     (log! "Autopilot engaged")
 
@@ -196,20 +203,34 @@
       (check-staging! vessel))
     (doto auto-pilot
       (.setTargetRoll 180)
-      (.targetPitchAndHeading 85 90))
+      (.targetPitchAndHeading 85 heading))
     (log! "Gravity turn")
 
     (while-waiting (<= (.get altitude) 5000)
       (check-staging! vessel))
     (doto auto-pilot
-      (.targetPitchAndHeading 75 90))
+      (.targetPitchAndHeading 70 heading))
     (log! "Gravity turn")
 
     (while-waiting (<= (.get altitude) 10000)
       (check-staging! vessel))
     (doto auto-pilot
-      (.targetPitchAndHeading 45 90))
+      (.targetPitchAndHeading 45 heading))
+
+    (while-waiting (<= (.get altitude) 20000)
+      (check-staging! vessel))
+    (doto auto-pilot
+      (.targetPitchAndHeading 35 heading))
+
+    (while-waiting (<= (.get altitude) 30000)
+      (check-staging! vessel))
+    (doto auto-pilot
+      (.targetPitchAndHeading 25 heading))
     (log! "Gravity turn")))
+
+(comment
+  (doto (get-auto-pilot (get-vessel))
+    (.targetPitchAndHeading 37 (-90 28))))
 
 (defn execute-coasting!
   [vessel target-orbit {:keys [apoapsis]}]
@@ -221,13 +242,13 @@
     (.setThrottle control 0)))
 
 (defn execute-circularize!
-  [vessel target-orbit {:keys [altitude apoapsis]}]
+  [vessel target-orbit {:keys [altitude apoapsis heading]}]
   (let [auto-pilot (get-auto-pilot vessel)]
-    (while-waiting (<= (.get altitude) 70000)
+    (while-waiting (<= (.get altitude) 100000)
       (check-staging! vessel))
     (doto auto-pilot
       (.setTargetRoll 180)
-      (.targetPitchAndHeading 0 90))
+      (.targetPitchAndHeading 0 heading))
     (log! "Preparing to circularize, altitude" (int (.get altitude)))
 
     (while-waiting (<= (.get altitude) (* 0.95 (.get apoapsis)))
@@ -255,7 +276,7 @@
     (.setThrottle control 0)
     (log! "Reached orbit!")))
 
-(defn fly-to-orbit! [vessel target-orbit]
+(defn fly-to-orbit! [vessel target-orbit target-heading]
   (let [frame (.getSurfaceReferenceFrame vessel)
         flight (get-flight vessel frame)
         orbit (.getOrbit vessel)
@@ -292,6 +313,6 @@
             (prn :version (krpc-version))
             (doto (get-vessel)
               (launch-sequence!)
-              (fly-to-orbit! 100000))
+              (fly-to-orbit! 183000 (- 90 28)))
             (disconnect!)))
   @flight)
