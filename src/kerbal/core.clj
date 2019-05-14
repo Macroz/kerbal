@@ -23,9 +23,9 @@
             (float 16.0)))
 
 (defn connect!
-  ([host rpc-port stream-port]
+  ([name host rpc-port stream-port]
    (reset! *connection*
-           (Connection/newInstance "Remote" host rpc-port stream-port))))
+           (Connection/newInstance name host rpc-port stream-port))))
 
 (defn disconnect! []
   (.close @*connection*)
@@ -79,7 +79,7 @@
     (doall active-engines)))
 
 (comment
-  (connect! "192.168.88.146" 50000 50001)
+  (connect! "Make" "192.168.43.27" 50000 50001)
   (get-active-engines (get-vessel)))
 
 (defn engine-has-fuel? [engine]
@@ -269,23 +269,26 @@
         time-to-periapsis (add-stream! orbit "getTimeToPeriapsis")
         streams {:ut ut
                  :altitude altitude
+                 :heading target-heading
                  :apoapsis apoapsis
                  :periapsis periapsis
                  :time-to-apoapsis time-to-apoapsis
                  :time-to-periapsis time-to-periapsis}]
 
     (execute-gravity-turn! vessel streams)
-    (execute-coasting! vessel target-orbit streams)
+    ;;(execute-coasting! vessel target-orbit streams)
     (execute-circularize! vessel target-orbit streams)
-    (execute-finalize-circularization! vessel target-orbit streams)))
+    ;;(execute-finalize-circularization! vessel target-orbit streams)
+    ))
 
 (defonce flight (atom nil))
 
 (defn go! []
   (reset! flight
           (future
-            ;;(connect! "192.168.88.146" 50000 50001)
-            (connect! "127.0.0.1" 50000 50001)
+            ;;(connect! "Make" "192.168.43.27" 50000 50001)
+            (connect! "Make" "10.110.1.3" 50000 50001)
+            ;;(connect! "127.0.0.1" 50000 50001)
             (prn :version (krpc-version))
             (doto (get-vessel)
               (launch-sequence!)
