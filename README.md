@@ -4,7 +4,7 @@ Play [Kerbal Space Program](https://www.kerbalspaceprogram.com/) from Clojure wi
 
 ## Install
 
-- download KRPC jar from https://github.com/krpc/krpc/releases
+- download KRPC jar from https://github.com/krpc/krpc/releases e.g. `krpc-java-0.4.8.jar`
 - install it to local Maven repository a command like this
 
 ```sh
@@ -17,11 +17,11 @@ mvn install:install-file -Dfile=krpc-java-0.4.8.jar -DgroupId=krpc \
                  [com.google.protobuf/protobuf-java "3.6.1"]
                  [org.javatuples/javatuples "1.2"]
                  [krpc/krpc-java "0.4.8"]]
-
-- download KRPC server zip from 
-- extract its `GameData` contents to the `GameData` folder
+```
+- download KRPC server zip from the same place you downloaded the KRPC jar from e.g. `krpc-0.4.8.zip`
+- extract its `GameData` contents to the `GameData` folder of your game installation 
 - start KSP with the KRPC mod installed
-- once you launch a game, the server can be started (for more info read KRPC)
+- once you launch a game, the server can be started (for more info read [KRPC](https://krpc.github.io/krpc/getting-started.html)
 - open `core.clj`
 - check connection settings i.e. IP and ports match with your server
 - launch REPL (in your favourite editor)
