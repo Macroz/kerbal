@@ -305,6 +305,7 @@
 (defonce flight (atom nil))
 
 (defn go! []
+  (future (disconnect!))
   (reset! flight
           (future
             ;;(connect! "Make" "192.168.43.27" 50000 50001)
